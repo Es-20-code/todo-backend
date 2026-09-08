@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Todo API — Panel de pruebas</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --accent: #5b8cff;
+    --accent-hover: #4574f0;
+    --danger: #ef5b5b;
+    --danger-hover: #d94a4a;
+    --ok: #3fbf7f;
+    --warn: #e0a83a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small { padding: 5px 10px; font-size: 12px; }
+  .row { display: flex; gap: 8px; margin-top: 14px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+  .toolbar select { width: auto; min-width: 160px; }
+  .error { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 14px; }
+  .status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+  .status-PENDING { background: rgba(224,168,58,.15); color: var(--warn); }
+  .status-IN_PROGRESS { background: rgba(91,140,255,.15); color: var(--accent); }
+  .status-DONE { background: rgba(63,191,127,.15); color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: none; }
+  .muted { color: var(--muted); }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .empty { color: var(--muted); text-align: center; padding: 30px 0; }
+  .desc { max-width: 220px; white-space: pre-wrap; word-break: break-word; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%; max-width: 480px;
+    padding: 18px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 15px; }
+  .modal .close { float: right; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0; }
+  .event { border-left: 2px solid var(--border); padding: 4px 0 12px 14px; margin-left: 4px; position: relative; }
+  .event::before {
+    content: ""; position: absolute; left: -5px; top: 6px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  }
+  .event .action { font-weight: 700; font-size: 12px; }
+  .event .time { color: var(--muted); font-size: 11px; }
+  .event pre {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px; font-size: 11px; margin: 6px 0 0; overflow-x: auto; white-space: pre-wrap;
+  }
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 10px 16px; border-radius: 8px; font-size: 13px;
+    opacity: 0; transform: translateY(8px); transition: all .25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { border-color: var(--danger); color: var(--danger); }
+  .toast.ok { border-color: var(--ok); color: var(--ok); }
+</style>
+</head>
+<body>
+
+<h1>Todo API — Panel de pruebas</h1>
+<p class="subtitle">Interfaz mínima sobre <code>/tasks</code> para crear, listar, editar, eliminar y ver el historial de una tarea.</p>
+
+<div class="layout">
+  <div class="panel">
+    <h2>Nueva tarea</h2>
+    <form id="create-form">
+      <label for="c-title">Título *</label>
+      <input id="c-title" name="title" required />
+
+      <label for="c-description">Descripción</label>
+      <textarea id="c-description" name="description"></textarea>
+
+      <label for="c-dueDate">Fecha límite</label>
+      <input id="c-dueDate" name="dueDate" type="date" />
+
+      <div class="row">
+        <button type="submit" class="btn-primary">Crear tarea</button>
+      </div>
+      <div class="error" id="create-error"></div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0">Tareas</h2>
+      <div style="display:flex; gap:8px; align-items:center">
+        <select id="status-filter">
+          <option value="">Todos los estados</option>
+          <option value="PENDING">PENDING</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="DONE">DONE</option>
+        </select>
+        <button class="btn-ghost btn-small" id="refresh-btn">Refrescar</button>
+      </div>
+    </div>
+    <div id="list-container"></div>
+  </div>
+</div>
+
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <button class="close" data-close="edit">✕</button>
+    <h3>Editar tarea #<span id="edit-id"></span></h3>
+    <form id="edit-form">
+      <label for="e-title">Título</label>
+      <input id="e-title" name="title" />
+
+      <label for="e-description">Descripción</label>
+      <textarea id="e-description" name="description"></textarea>
+
+      <label for="e-status">Estado</label>
+      <select id="e-status" name="status">
+        <option value="PENDING">PENDING</option>
+        <option value="IN_PROGRESS">IN_PROGRESS</option>
+        <option value="DONE">DONE</option>
+      </select>
+
+      <div class="row">
+        <button type="submit" class="btn-primary">Guardar cambios</button>
+        <button type="button" class="btn-ghost" data-close="edit">Cancelar</button>
+      </div>
+      <div class="error" id="edit-error"></div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="history-overlay">
+  <div class="modal">
+    <button class="close" data-close="history">✕</button>
+    <h3>Historial de la tarea #<span id="history-id"></span></h3>
+    <p class="muted" id="history-task-info" style="font-size:13px;"></p>
+    <div id="history-events"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "/tasks";
+
+const listContainer = document.getElementById("list-container");
+const statusFilter = document.getElementById("status-filter");
+const toastEl = document.getElementById("toast");
+
+function showToast(message, kind) {
+  toastEl.textContent = message;
+  toastEl.className = "toast show " + (kind || "");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toastEl.className = "toast"; }, 2600);
+}
+
+function fmtDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return d.toLocaleString();
+}
+
+function statusPill(status) {
+  return `<span class="status-pill status-${status}">${status}</span>`;
+}
+
+async function api(path, options) {
+  const res = await fetch(API + path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  let body = null;
+  const text = await res.text();
+  if (text) {
+    try { body = JSON.parse(text); } catch (_e) { body = text; }
+  }
+  if (!res.ok) {
+    const message = (body && body.message) ? body.message : `HTTP ${res.status}`;
+    throw new Error(message);
+  }
+  return body;
+}
+
+async function loadTasks() {
+  listContainer.innerHTML = `<p class="empty">Cargando…</p>`;
+  try {
+    const query = statusFilter.value ? `?status=${statusFilter.value}` : "";
+    const tasks = await api(query);
+    renderTasks(tasks);
+  } catch (err) {
+    listContainer.innerHTML = `<p class="empty">Error al cargar: ${err.message}</p>`;
+  }
+}
+
+function renderTasks(tasks) {
+  if (!tasks.length) {
+    listContainer.innerHTML = `<p class="empty">No hay tareas${statusFilter.value ? " con ese estado" : ""}.</p>`;
+    return;
+  }
+
+  const rows = tasks.map((t) => `
+    <tr>
+      <td>${t.id}</td>
+      <td>
+        <div>${escapeHtml(t.title)}</div>
+        <div class="desc muted">${escapeHtml(t.description || "")}</div>
+      </td>
+      <td>${statusPill(t.status)}</td>
+      <td class="muted">${fmtDate(t.dueDate)}</td>
+      <td class="muted">${fmtDate(t.createdAt)}</td>
+      <td>
+        <div class="actions">
+          <button class="btn-ghost btn-small" onclick="openEdit(${t.id})">Editar</button>
+          <button class="btn-ghost btn-small" onclick="openHistory(${t.id})">Historial</button>
+          <button class="btn-danger btn-small" onclick="removeTask(${t.id})">Eliminar</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  listContainer.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Título / Descripción</th><th>Estado</th><th>Vence</th><th>Creada</th><th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+// --- Crear ---
+document.getElementById("create-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errorEl = document.getElementById("create-error");
+  errorEl.textContent = "";
+
+  const payload = {
+    title: form.title.value.trim(),
+    description: form.description.value.trim() || undefined,
+    dueDate: form.dueDate.value || undefined,
+  };
+
+  try {
+    await api("", { method: "POST", body: JSON.stringify(payload) });
+    form.reset();
+    showToast("Tarea creada", "ok");
+    loadTasks();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+});
+
+// --- Editar ---
+const editOverlay = document.getElementById("edit-overlay");
+let editingId = null;
+
+window.openEdit = async function (id) {
+  try {
+    const task = await api(`/${id}`);
+    editingId = id;
+    document.getElementById("edit-id").textContent = id;
+    document.getElementById("e-title").value = task.title;
+    document.getElementById("e-description").value = task.description || "";
+    document.getElementById("e-status").value = task.status;
+    document.getElementById("edit-error").textContent = "";
+    editOverlay.classList.add("open");
+  } catch (err) {
+    showToast(err.message, "err");
+  }
+};
+
+document.getElementById("edit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errorEl = document.getElementById("edit-error");
+  errorEl.textContent = "";
+
+  const payload = {
+    title: form.title.value.trim(),
+    description: form.description.value,
+    status: form.status.value,
+  };
+
+  try {
+    await api(`/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
+    editOverlay.classList.remove("open");
+    showToast("Tarea actualizada", "ok");
+    loadTasks();
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+});
+
+// --- Eliminar ---
+window.removeTask = async function (id) {
+  if (!confirm(`¿Eliminar la tarea #${id}? (soft delete)`)) return;
+  try {
+    await api(`/${id}`, { method: "DELETE" });
+    showToast("Tarea eliminada", "ok");
+    loadTasks();
+  } catch (err) {
+    showToast(err.message, "err");
+  }
+};
+
+// --- Historial ---
+const historyOverlay = document.getElementById("history-overlay");
+
+window.openHistory = async function (id) {
+  document.getElementById("history-id").textContent = id;
+  document.getElementById("history-task-info").textContent = "Cargando…";
+  document.getElementById("history-events").innerHTML = "";
+  historyOverlay.classList.add("open");
+
+  try {
+    const data = await api(`/${id}/history`);
+    const task = data.task;
+    document.getElementById("history-task-info").innerHTML =
+      `<strong>${escapeHtml(task.title)}</strong> · ${statusPill(task.status)} ` +
+      (task.deletedAt ? `· <span style="color:var(--danger)">eliminada el ${fmtDate(task.deletedAt)}</span>` : "");
+
+    if (!data.events.length) {
+      document.getElementById("history-events").innerHTML = `<p class="empty">Sin eventos.</p>`;
+      return;
+    }
+
+    document.getElementById("history-events").innerHTML = data.events.map((ev) => `
+      <div class="event">
+        <div class="action">${ev.action}</div>
+        <div class="time">${fmtDate(ev.timestamp)}</div>
+        <pre>${escapeHtml(JSON.stringify(ev.changes, null, 2))}</pre>
+      </div>
+    `).join("");
+  } catch (err) {
+    document.getElementById("history-task-info").textContent = "Error: " + err.message;
+  }
+};
+
+// --- Overlays comunes ---
+document.querySelectorAll("[data-close]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById(btn.dataset.close + "-overlay").classList.remove("open");
+  });
+});
+document.querySelectorAll(".overlay").forEach((ov) => {
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("open"); });
+});
+
+statusFilter.addEventListener("change", loadTasks);
+document.getElementById("refresh-btn").addEventListener("click", loadTasks);
+
+loadTasks();
+</script>
+
+</body>
+</html>
